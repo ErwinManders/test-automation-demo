@@ -1,0 +1,12 @@
+pactbroker:
+    host: tenant.pactflow.io
+    port: 443
+    scheme: https
+    auth:
+        token: yourpactflowtoken
+
+hazelcast:
+    address: localhost:5701
+
+split:
+    apiKey: splitapikey
