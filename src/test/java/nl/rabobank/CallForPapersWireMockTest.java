@@ -1,21 +1,31 @@
 package nl.rabobank;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
+import static com.github.tomakehurst.wiremock.client.WireMock.any;
 import static com.github.tomakehurst.wiremock.client.WireMock.configureFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.get;
+import static com.github.tomakehurst.wiremock.client.WireMock.ok;
+import static com.github.tomakehurst.wiremock.client.WireMock.post;
+import static com.github.tomakehurst.wiremock.client.WireMock.put;
 import static com.github.tomakehurst.wiremock.client.WireMock.stubFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlMatching;
+import static java.util.Collections.emptyMap;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.http.HttpHeaders.CONTENT_TYPE;
 import static org.springframework.http.HttpStatus.OK;
 import static org.springframework.http.MediaType.APPLICATION_JSON;
 import static org.springframework.http.MediaType.APPLICATION_JSON_VALUE;
 
+import java.net.URI;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.UUID;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.client.TestRestTemplate;
+import org.springframework.web.util.UriComponentsBuilder;
 import com.github.tomakehurst.wiremock.WireMockServer;
 import com.github.tomakehurst.wiremock.common.ClasspathFileSource;
 import com.github.tomakehurst.wiremock.core.WireMockConfiguration;
@@ -26,7 +36,7 @@ import com.github.tomakehurst.wiremock.core.WireMockConfiguration;
 )
 class CallForPapersWireMockTest extends CallForPapersHazelCastTest
 {
-    private static final int PORT = 9090;
+    static final int PORT = 9090;
     protected TestRestTemplate restTemplate = new TestRestTemplate();
     private static WireMockServer wireMockServer;
 
@@ -37,10 +47,11 @@ class CallForPapersWireMockTest extends CallForPapersHazelCastTest
         wireMockServer.start();
     }
 
-    private static WireMockConfiguration configure()
+    static WireMockConfiguration configure()
     {
         return WireMockConfiguration.wireMockConfig()
                 .port(PORT)
+                .extensions(new WireMockLoginAction())
                 .fileSource(new ClasspathFileSource("src/test/resources/testdata"));
     }
 
@@ -79,10 +90,21 @@ class CallForPapersWireMockTest extends CallForPapersHazelCastTest
     }
 
     @Test
-    @DisplayName("Proxy to list of conferences with extra headers")
-    void proxyConferencesApi()
+    @DisplayName("Mock an authentication session")
+    void mockSession()
     {
         configureFor(PORT);
+
+        stubFor(post(urlMatching("/api/sessions?.*")).willReturn(ok())
+                .withPostServeAction(WireMockLoginAction.NAME, emptyMap()));
+
+        URI uri = UriComponentsBuilder
+                .fromUriString("http://localhost:9090/api/sessions")
+                .queryParam("customerId", "123456789")
+                .build()
+                .toUri();
+
+        restTemplate.postForEntity(uri, "{}", String.class);
 
         stubFor(get(urlMatching("/external/api/conferences"))
                 .willReturn(
@@ -91,12 +113,6 @@ class CallForPapersWireMockTest extends CallForPapersHazelCastTest
                                 .withHeader(CONTENT_TYPE, APPLICATION_JSON_VALUE)
                                 .withFixedDelay(100)
                                 .withStatus(200)));
-
-        stubFor(get(urlMatching("/api/conferences"))
-                .willReturn(
-                        aResponse()
-                                .proxiedFrom("http://localhost:8080/proxy")
-                                .withHeader("X_CUSTOMER_ID", "123456789")));
 
         final var response = restTemplate.getForEntity("http://localhost:9090/api/conferences", String.class);
 

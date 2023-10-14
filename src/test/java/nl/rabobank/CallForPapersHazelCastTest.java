@@ -26,7 +26,20 @@ import nl.rabobank.conference.Conference;
 class CallForPapersHazelCastTest
 {
     @Container
-    private static final GenericContainer<?> hazelCastContainer = new GenericContainer<>(DockerImageName.parse("hazelcast/hazelcast:5.2.0")).withExposedPorts(5701);
+    private static final GenericContainer<?> hazelCastContainer =
+            new GenericContainer<>(DockerImageName.parse("hazelcast/hazelcast:5.2.0")).withExposedPorts(5701);
+    public static class DataSourceInitializer
+            implements ApplicationContextInitializer<ConfigurableApplicationContext>
+    {
+        @Override
+        public void initialize(ConfigurableApplicationContext applicationContext) {
+            TestPropertySourceUtils.addInlinedPropertiesToEnvironment(
+                    applicationContext,
+                    "hazelcast.address=" + hazelCastContainer.getHost() + ":" + hazelCastContainer.getFirstMappedPort()
+            );
+        }
+    }
+
     private TestRestTemplate restTemplate = new TestRestTemplate();
 
     @Test
@@ -43,15 +56,4 @@ class CallForPapersHazelCastTest
         assertThat(body).isNotNull();
     }
 
-    public static class DataSourceInitializer
-            implements ApplicationContextInitializer<ConfigurableApplicationContext>
-    {
-        @Override
-        public void initialize(ConfigurableApplicationContext applicationContext) {
-            TestPropertySourceUtils.addInlinedPropertiesToEnvironment(
-                    applicationContext,
-                    "hazelcast.address=" + hazelCastContainer.getHost() + ":" + hazelCastContainer.getFirstMappedPort()
-            );
-        }
-    }
 }

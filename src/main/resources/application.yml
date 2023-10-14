@@ -1,12 +1,12 @@
 pactbroker:
-    host: tenant.pactflow.io
+    host: rabobank.pactflow.io
     port: 443
     scheme: https
     auth:
-        token: yourpactflowtoken
+        token: k44xb_kezm1kki5xLQ1OxA
 
 hazelcast:
     address: localhost:5701
 
 split:
-    apiKey: splitapikey
+    apiKey: n3ote4oilcr71rl3gkhs6t44fvp60359dufb
